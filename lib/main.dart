@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:anonchatapp/services/storage_service.dart';
 import 'package:anonchatapp/services/api_service.dart';
 import 'package:anonchatapp/controllers/auth_controller.dart';
+import 'package:anonchatapp/controllers/settings_controller.dart';
 import 'package:anonchatapp/pages/auth_page.dart';
 import 'package:anonchatapp/pages/chat_page.dart';
 
@@ -12,6 +13,7 @@ void main() async {
 
   Get.put(ApiService());
   Get.put(AuthController());
+  Get.put(SettingsController());
 
   runApp(const AnonChatApp());
 }

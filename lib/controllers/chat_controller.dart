@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:anonchatapp/models/chat_message.dart';
+import 'package:anonchatapp/models/chat_session.dart';
 import 'package:anonchatapp/models/user_data.dart';
 import 'package:anonchatapp/services/api_service.dart';
+import 'package:anonchatapp/services/storage_service.dart';
 
 class ChatController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
@@ -24,6 +26,8 @@ class ChatController extends GetxController {
   StreamSubscription? _sseSubscription;
   Timer? _typingTimer;
   String? _myId;
+  String? _currentSessionId;
+  int? _sessionStartedAt;
 
   @override
   void onInit() {
@@ -33,6 +37,7 @@ class ChatController extends GetxController {
 
   @override
   void onClose() {
+    _saveCurrentSession();
     _sseSubscription?.cancel();
     _typingTimer?.cancel();
     scrollController.dispose();
@@ -86,10 +91,12 @@ class ChatController extends GetxController {
         status.value = data;
         break;
       case 'peer':
+        _saveCurrentSession();
         peerName.value = data;
         messages.clear();
         status.value = 'Connected to $data';
         isConnected.value = true;
+        _startNewSession(data);
         _addSystemMessage('Connected to $data');
         break;
       case 'message':
@@ -121,13 +128,36 @@ class ChatController extends GetxController {
         } catch (_) {}
         break;
       case 'disconnected':
+        _saveCurrentSession();
         peerName.value = null;
         status.value = 'Stranger left. Waiting for new match...';
         isTyping.value = false;
         isConnected.value = false;
         _addSystemMessage('Stranger disconnected. Looking for a new one...');
+        _currentSessionId = null;
         break;
     }
+  }
+
+  void _startNewSession(String peer) {
+    _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _sessionStartedAt = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  Future<void> _saveCurrentSession() async {
+    if (!StorageService.getSaveChatsEnabled()) return;
+    if (_currentSessionId == null || peerName.value == null) return;
+    if (messages.where((m) => !m.isSystem).isEmpty) return;
+
+    final session = ChatSession(
+      id: _currentSessionId!,
+      peerName: peerName.value!,
+      startedAt: _sessionStartedAt ?? DateTime.now().millisecondsSinceEpoch,
+      endedAt: DateTime.now().millisecondsSinceEpoch,
+      messages: messages.map((m) => SavedMessage.fromChatMessage(m)).toList(),
+    );
+
+    await StorageService.saveChatSession(session);
   }
 
   void _addSystemMessage(String text) {
