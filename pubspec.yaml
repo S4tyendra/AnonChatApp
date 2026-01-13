@@ -38,6 +38,8 @@ dependencies:
   shelf_router: ^1.1.4
   webview_flutter: ^4.13.1
   shared_preferences: ^2.5.4
+  http: ^1.6.0
+  dio: ^5.9.0
 
 dev_dependencies:
   flutter_test:
