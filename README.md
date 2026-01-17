@@ -29,23 +29,6 @@ AnonChat pairs you with a random stranger from anywhere in the world for a one-o
 - Flutter SDK (Dart ^3.11.0 or later)
 - Android Studio / Xcode for mobile builds
 
-## Getting Started
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/anonchatapp.git
-   cd anonchatapp
-   ```
-
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-3. Run the app:
-   ```bash
-   flutter run
-   ```
 
 ## Project Structure
 
@@ -61,7 +44,7 @@ lib/
 
 ## How It Works
 
-1. **Authentication** - Users authenticate through a web-based flow that generates a session token
+1. **Authentication** - Users authenticate through a web-based flow that generates a session token (read below)
 2. **Connection** - The app establishes a Server-Sent Events stream with the backend
 3. **Matchmaking** - The server pairs you with an available stranger
 4. **Chatting** - Messages are sent via POST requests and received through the SSE stream
@@ -81,11 +64,13 @@ flutter build ios --release
 
 ## Backend Setup
 
-The backend is also open source. If you want to host your own instance:
+I also wanted to make the server open-source. If you want to host your own instance:
+I Will be placing the server code at https://github.com/S4tyendra/AnonChatApp-api (check if i open sourced it or not.)
+
 
 ### Chat API Server
 
-The main chat API backend is available at the same repository location. Clone and deploy it to your own server, then update the `baseUrl` in `lib/services/api_service.dart` to point to your instance.
+The main chat API backend is available at the repository metioned above. Clone and deploy it to your own server, then update the `baseUrl` in `lib/services/api_service.dart` to point to your instance.
 
 The reference implementation runs at `https://anon-chatapi.devh.in`.
 
@@ -109,4 +94,4 @@ To point the app to your own backend, update these files:
 
 ## License
 
-This project is provided as-is for educational purposes.
+This project is provided as-is for educational purposes. it uses SSE for chat instead of websockets.
