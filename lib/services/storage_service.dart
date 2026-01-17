@@ -15,7 +15,13 @@ class StorageService {
     Hive.registerAdapter(ChatSessionAdapter());
     await Hive.openBox<UserData>(_userBox);
     await Hive.openBox(_settingsBox);
-    await Hive.openBox<ChatSession>(_chatsBox);
+    try {
+      await Hive.openBox<ChatSession>(_chatsBox);
+    } catch (e) {
+      // Corrupted chat data, delete and recreate
+      await Hive.deleteBoxFromDisk(_chatsBox);
+      await Hive.openBox<ChatSession>(_chatsBox);
+    }
   }
 
   static Box<UserData> get _userBoxInstance => Hive.box<UserData>(_userBox);

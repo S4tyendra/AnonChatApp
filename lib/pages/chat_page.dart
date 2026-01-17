@@ -87,9 +87,11 @@ class ChatPage extends StatelessWidget {
                           height: 8,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: controller.isConnected.value
-                                ? const Color(0xFF22C55E)
-                                : const Color(0xFFF59E0B),
+                            color: controller.isPeerTemporarilyDisconnected.value
+                                ? const Color(0xFFF59E0B) // Orange - peer reconnecting
+                                : controller.isConnected.value
+                                    ? const Color(0xFF22C55E) // Green - connected
+                                    : const Color(0xFF6B7280), // Gray - searching
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -116,11 +118,11 @@ class ChatPage extends StatelessWidget {
             () => IconButton(
               icon: Icon(
                 Icons.skip_next_rounded,
-                color: controller.isConnected.value
+                color: controller.canSkip.value
                     ? const Color(0xFFF59E0B)
                     : Colors.white30,
               ),
-              onPressed: controller.isConnected.value
+              onPressed: controller.canSkip.value
                   ? () => controller.skipPeer()
                   : null,
               tooltip: 'Skip',

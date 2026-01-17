@@ -79,14 +79,19 @@ class ChatSession {
       };
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
+    final rawMessages = json['messages'] as List;
+    final messages = rawMessages.map((m) {
+      if (m is SavedMessage) return m;
+      if (m is Map) return SavedMessage.fromJson(Map<String, dynamic>.from(m));
+      throw ArgumentError('Invalid message type: ${m.runtimeType}');
+    }).toList();
+
     return ChatSession(
       id: json['id'],
       peerName: json['peerName'],
       startedAt: json['startedAt'],
       endedAt: json['endedAt'],
-      messages: (json['messages'] as List)
-          .map((m) => SavedMessage.fromJson(m))
-          .toList(),
+      messages: messages,
     );
   }
 }

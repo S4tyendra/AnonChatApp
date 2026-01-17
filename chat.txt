@@ -1,0 +1,654 @@
+
+╭─── Claude Code v2.1.6 ───────────────────────────────────────────────────────╮
+│                                                  │ Tips for getting started  │
+│                   Welcome back!                  │ Run /init to create a CL… │
+│                                                  │ ───────────────────────── │
+│                      ▐▛███▜▌                     │ Recent activity           │
+│                     ▝▜█████▛▘                    │ No recent activity        │
+│                       ▘▘ ▝▝                      │                           │
+│                                                  │                           │
+│   claude-opus-4-5-thinking · API Usage Billing   │                           │
+│         ~/Documents/Projects/anonchatapp         │                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+  Welcome to Opus 4.5
+══════════════════ Conversation compacted · ctrl+o for history ═════════════════
+  ⎿  Read lib/controllers/chat_controller.dart (236 lines)
+  ⎿  Read lib/pages/chat_page.dart (298 lines)
+  ⎿  Read lib/pages/settings_page.dart (144 lines)
+  ⎿  Read lib/pages/chat_history_page.dart (213 lines)
+  ⎿  Read lib/controllers/settings_controller.dart (66 lines)
+
+● I'll update the skipPeer() method in ChatController to clear messages and reset the state to loading/searching when the skip button is clicked.
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 7 lines                                                       
+      217    Future<void> skipPeer() async {
+      218      if (userData.id.isEmpty) return;
+      219      try {
+      220 +      _saveCurrentSession();                                  
+      221 +      messages.clear();                                       
+      222 +      peerName.value = null;                                  
+      223 +      isConnected.value = false;                              
+      224 +      isTyping.value = false;                                 
+      225 +      status.value = 'Looking for a new stranger...';         
+      226 +      _currentSessionId = null;                               
+      227        await _apiService.disconnect(userData.id);
+      228      } catch (_) {}
+      229    }
+
+● Done. Now when you click the skip button, it will:
+
+  1. Save the current chat session (if save chats is enabled)
+  2. Clear all messages
+  3. Reset peer name to null
+  4. Set isConnected to false (disables input and send button)
+  5. Reset typing indicator
+  6. Update status to "Looking for a new stranger..."
+  7. Clear the session ID
+  8. Call the disconnect API to notify the server
+
+  The UI will automatically show the loading/searching state with the spinner and "Looking for someone to chat with..." message since messages.isEmpty && !isConnected.value will be true.
+
+✻ Worked for 1m 30s
+
+❯ /cost 
+  ⎿  Total cost:            $11.77
+     Total duration (API):  28m 54s
+     Total duration (wall): 1h 42m 28s
+     Total code changes:    2194 lines added, 683 lines removed
+     Usage by model:
+            claude-sonnet:  21.6k input, 23.8k output, 0 cache read, 0 cache 
+     write ($0.4216)
+          claude-opus-4-5:  1.3m input, 53.5k output, 6.7m cache read, 0 cache 
+     write ($11.35)
+
+❯ E/flutter (16689): #5      new List.of                                    
+  (dart:core-patch/array_patch.dart:39:18)                                  
+  array_patch.dart:39                                                       
+  E/flutter (16689): #6      ListIterable.toList                            
+  (dart:_internal/iterable.dart:224:7)                                      
+  iterable.dart:224                                                         
+  E/flutter (16689): #7      new ChatSession.fromJson                       
+  (package:anonchatapp/models/chat_session.dart:89:12)                      
+  chat_session.dart:89                                                      
+  E/flutter (16689): #8      ChatSessionAdapter.read                        
+  (package:anonchatapp/models/chat_session.dart:101:24)                     
+  chat_session.dart:101                                                     
+  E/flutter (16689): #9      BinaryReaderImpl.read                          
+  (package:hive/src/binary/binary_reader_impl.dart:328:33)                  
+  binary_reader_impl.dart:328                                               
+  E/flutter (16689): #10     BinaryReaderImpl.readFrame                     
+  (package:hive/src/binary/binary_reader_impl.dart:276:26)                  
+  binary_reader_impl.dart:276                                               
+  E/flutter (16689): #11     FrameHelper.framesFromBytes                    
+  (package:hive/src/binary/frame_helper.dart:21:26)                         
+  frame_helper.dart:21                                                      
+  E/flutter (16689): #12     FrameIoHelper.framesFromFile                   
+  (package:hive/src/io/frame_io_helper.dart:42:12)                          
+  frame_io_helper.dart:42                                                   
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689): #13     StorageBackendVm.initialize                    
+  (package:hive/src/backend/vm/storage_backend_vm.dart:86:11)               
+  storage_backend_vm.dart:86                                                
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689): #14     HiveImpl._openBox                              
+  (package:hive/src/hive_impl.dart:111:9)                                   
+  hive_impl.dart:111                                                        
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689): #15     HiveImpl.openBox                               
+  (package:hive/src/hive_impl.dart:142:12)                                  
+  hive_impl.dart:142                                                        
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689): #16     StorageService.init                            
+  (package:anonchatapp/services/storage_service.dart:18:5)                  
+  storage_service.dart:18                                                   
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689): #17     main (package:anonchatapp/main.dart:12:3)      
+  main.dart:12                                                              
+  E/flutter (16689): <asynchronous suspension>                              
+  E/flutter (16689):                                                        
+
+● There's an issue with the Hive deserialization of ChatSession. Let me check the model file.
+
+● Read(lib/models/chat_session.dart)
+  ⎿  Read 109 lines
+
+● The issue is that the Hive adapter is storing messages as a List, but when reading back, the fromJson expects Map<String, dynamic> for each message. The Hive binary serialization doesn't preserve the exact type information.
+
+  I need to fix the fromJson method to handle the case where messages might already be SavedMessage objects (from Hive) or maps (from JSON):
+
+● Update(lib/models/chat_session.dart)
+  ⎿  Added 8 lines, removed 3 lines                                      
+      79        };
+      80  
+      81    factory ChatSession.fromJson(Map<String, dynamic> json) {
+      82 +    final rawMessages = json['messages'] as List;              
+      83 +    final messages = rawMessages.map((m) {                     
+      84 +      if (m is SavedMessage) return m;                         
+      85 +      if (m is Map) return SavedMessage.fromJson(Map<String, dy
+         +namic>.from(m));                                               
+      86 +      throw ArgumentError('Invalid message type: ${m.runtimeTyp
+         +e}');                                                          
+      87 +    }).toList();                                               
+      88 +                                                               
+      89      return ChatSession(
+      90        id: json['id'],
+      91        peerName: json['peerName'],
+      92        startedAt: json['startedAt'],
+      93        endedAt: json['endedAt'],
+      87 -      messages: (json['messages'] as List)                     
+      88 -          .map((m) => SavedMessage.fromJson(m))                
+      89 -          .toList(),                                           
+      94 +      messages: messages,                                      
+      95      );
+      96    }
+      97  }
+
+● The fix handles both cases - when messages come from Hive binary storage (as raw Maps) and when they're already SavedMessage objects.
+
+  However, since there's corrupted data in the existing Hive box, you'll need to clear the app data or delete the Hive box file to fix the immediate crash. You can do this by:
+
+  1. Uninstall and reinstall the app, OR
+  2. Clear app data in Android settings, OR
+  3. Add this temporary code to clear the box on startup (remove after first run):
+
+● Read(lib/services/storage_service.dart)
+  ⎿  Read 73 lines
+
+● Let me add error recovery to the init method that will clear corrupted chat data:
+
+● Update(lib/services/storage_service.dart)
+  ⎿  Added 7 lines, removed 1 line                                       
+      15      Hive.registerAdapter(ChatSessionAdapter());
+      16      await Hive.openBox<UserData>(_userBox);
+      17      await Hive.openBox(_settingsBox);
+      18 -    await Hive.openBox<ChatSession>(_chatsBox);                
+      18 +    try {                                                      
+      19 +      await Hive.openBox<ChatSession>(_chatsBox);              
+      20 +    } catch (e) {                                              
+      21 +      // Corrupted chat data, delete and recreate              
+      22 +      await Hive.deleteBoxFromDisk(_chatsBox);                 
+      23 +      await Hive.openBox<ChatSession>(_chatsBox);              
+      24 +    }                                                          
+      25    }
+      26  
+      27    static Box<UserData> get _userBoxInstance => Hive.box<UserDat
+          a>(_userBox);
+
+● Done. Now the app will:
+  1. Automatically recover from corrupted chat data by deleting and recreating the box
+  2. Properly deserialize messages from Hive storage
+
+  Restart the app and it should work now. The corrupted chat data will be cleared automatically on startup.
+
+✻ Cooked for 42s
+
+❯ /usage 
+  ⎿  Status dialog dismissed
+
+❯ new:                                                                      
+  SSE Events for Clients:                                                   
+                                                                            
+  ┌───────────────────┬────────────┬──────────────────────────────────────┐ 
+  │       Event       │    Data    │             Description                
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ retry:            │ 3000 (ms)  │ SSE auto-reconnect interval hint       
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ identity          │ {userId}   │ Initial connection identity            
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ connected         │ {peerName} │ Successfully paired with peer          
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ reconnected       │ {userId}   │ Reconnected within grace period        
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ peer_disconnected │ temporary  │ Peer lost connection (may reconnect)   
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ peer_reconnected  │ {peerName} │ Peer reconnected                       
+  │                                                                         
+                                                                            
+  ├───────────────────┼────────────┼──────────────────────────────────────┤ 
+  │ disconnected      │ peer_left  │ Peer permanently left                  
+  │                                                                         
+                                                                            
+  └───────────────────┴────────────┴──────────────────────────────────────┘ 
+  Reconnection Flow:                                                        
+  1. Client loses connection → server starts30s grace period                
+  2. Peer notified with peer_disconnected: temporary                        
+  3. If client reconnects within30s:                                        
+  - Gets reconnected event                                                  
+  - Gets connected event with same peer name                                
+  - Peer gets peer_reconnected event                                        
+  4. If grace period expires → full cleanup, peer put back in queue         
+                                                                            
+  Client-side (Flutter):                                                    
+  - Listen for retry: header - EventSource uses this automatically          
+  - Handle reconnected event to know session was restored                   
+  - Handle peer_disconnected to show "peer may be reconnecting..." UI       
+  - Handle peer_reconnected when peer comes back                            
+                                                                            
+  Config options (env vars):                                                
+  - RECONNECT_GRACE_PERIOD_MS=30000 (default30s)                            
+  - SSE_RETRY_MS=3000 (default 3s)                                          
+
+● I'll update the ChatController to handle these new reconnection events.
+
+● Read(lib/controllers/chat_controller.dart)
+  ⎿  Read 243 lines
+
+● Now I'll update the controller to handle the new reconnection events:
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 1 line                                                        
+      19    final peerName = RxnString();
+      20    final isTyping = false.obs;
+      21    final isConnected = false.obs;
+      22 +  final isPeerTemporarilyDisconnected = false.obs;             
+      23  
+      24    final ScrollController scrollController = ScrollController();
+      25    final TextEditingController textController = TextEditingContr
+          oller();
+
+● Now update the event handler to handle all the new events:
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 29 lines, removed 4 lines                                     
+       97        case 'peer':
+       98        case 'connected':
+       99          debugPrint('[SSE] PEER/CONNECTED EVENT RECEIVED: $data
+           ');
+      100 -        _saveCurrentSession();                                
+      100 +        // Only start new session if this is a new peer       
+      101 +        if (peerName.value != data) {                         
+      102 +          _saveCurrentSession();                              
+      103 +          messages.clear();                                   
+      104 +          _startNewSession(data);                             
+      105 +          _addSystemMessage('Connected to $data');            
+      106 +        }                                                     
+      107          peerName.value = data;
+      102 -        messages.clear();                                     
+      108          status.value = 'Connected to $data';
+      109          isConnected.value = true;
+      105 -        _startNewSession(data);                               
+      106 -        _addSystemMessage('Connected to $data');              
+      110 +        isPeerTemporarilyDisconnected.value = false;          
+      111          debugPrint('[SSE] isConnected now: ${isConnected.value
+           }, peerName: ${peerName.value}');
+      112          break;
+      113 +      case 'reconnected':                                     
+      114 +        // We reconnected within grace period, session restore
+          +d                                                             
+      115 +        debugPrint('[SSE] Reconnected to session: $data');    
+      116 +        status.value = 'Reconnected';                         
+      117 +        _addSystemMessage('Connection restored');             
+      118 +        break;                                                
+      119 +      case 'peer_disconnected':                               
+      120 +        // Peer temporarily lost connection                   
+      121 +        debugPrint('[SSE] Peer temporarily disconnected');    
+      122 +        isPeerTemporarilyDisconnected.value = true;           
+      123 +        status.value = '${peerName.value} may be reconnecting.
+          +..';                                                          
+      124 +        _addSystemMessage('${peerName.value} lost connection, 
+          +waiting for reconnect...');                                   
+      125 +        break;                                                
+      126 +      case 'peer_reconnected':                                
+      127 +        // Peer came back                                     
+      128 +        debugPrint('[SSE] Peer reconnected: $data');          
+      129 +        isPeerTemporarilyDisconnected.value = false;          
+      130 +        status.value = 'Connected to $data';                  
+      131 +        _addSystemMessage('${peerName.value} reconnected');   
+      132 +        break;                                                
+      133        case 'message':
+      134          debugPrint('[SSE] MESSAGE EVENT - isConnected: ${isCon
+           nected.value}');
+      135          try {
+     ...
+      176          status.value = 'Stranger left. Waiting for new match..
+           .';
+      177          isTyping.value = false;
+      178          isConnected.value = false;
+      179 +        isPeerTemporarilyDisconnected.value = false;          
+      180          _addSystemMessage('Stranger disconnected. Looking for 
+           a new one...');
+      181          _currentSessionId = null;
+      182          break;
+
+● Now let me update the chat_page.dart to show the "peer may be reconnecting" UI state with a visual indicator:
+
+● Read(lib/pages/chat_page.dart)
+  ⎿  Read 120 lines
+
+● I'll update the status indicator to show orange/yellow when peer is temporarily disconnected:
+
+● Update(lib/pages/chat_page.dart)
+  ⎿  Added 5 lines, removed 3 lines                                      
+      87                            height: 8,
+      88                            decoration: BoxDecoration(
+      89                              shape: BoxShape.circle,
+      90 -                            color: controller.isConnected.value
+      91 -                                ? const Color(0xFF22C55E)      
+      92 -                                : const Color(0xFFF59E0B),     
+      90 +                            color: controller.isPeerTemporarily
+         +Disconnected.value                                             
+      91 +                                ? const Color(0xFFF59E0B) // Or
+         +ange - peer reconnecting                                       
+      92 +                                : controller.isConnected.value 
+      93 +                                    ? const Color(0xFF22C55E) /
+         +/ Green - connected                                            
+      94 +                                    : const Color(0xFF6B7280), 
+         +// Gray - searching                                            
+      95                            ),
+      96                          ),
+      97                          const SizedBox(width: 6),
+
+● Done. The controller now handles all the new reconnection events:
+  Event: reconnected
+  Handling: Shows "Connection restored" system message
+  ────────────────────────────────────────
+  Event: peer_disconnected
+  Handling: Sets isPeerTemporarilyDisconnected = true, shows orange indicator and
+     "[name] may be reconnecting..." status
+  ────────────────────────────────────────
+  Event: peer_reconnected
+  Handling: Clears temporary disconnect state, shows "[name] reconnected" message
+  ────────────────────────────────────────
+  Event: connected
+  Handling: Now handles reconnection case - won't clear messages if same peer
+  ────────────────────────────────────────
+  Event: disconnected
+  Handling: Resets all states including temporary disconnect flag
+  The UI now shows:
+  - Green dot: Connected and peer online
+  - Orange dot: Peer temporarily disconnected (may reconnect)
+  - Gray dot: Searching for stranger
+
+✻ Sautéed for 2m 33s
+
+❯ /cost 
+  ⎿  Total cost:            $12.56
+     Total duration (API):  32m 12s
+     Total duration (wall): 2h 35m 49s
+     Total code changes:    2244 lines added, 694 lines removed
+     Usage by model:
+            claude-sonnet:  23.6k input, 23.8k output, 0 cache read, 0 cache 
+     write ($0.4282)
+          claude-opus-4-5:  1.4m input, 57.6k output, 7.0m cache read, 0 cache 
+     write ($12.13)
+
+❯ Rate Limits:                                                              
+  - Messages: 500ms (configurable via MESSAGE_RATE_LIMIT_MS)                
+  - Status/typing: 3s (configurable via STATUS_RATE_LIMIT_MS)               
+                                                                            
+  Limits:                                                                   
+  - Max message: 1024 chars (MAX_MESSAGE_LEN)                               
+  - Max name: 18 chars (MAX_NAME_LEN)                                       
+                                                                            
+  Response Changes:                                                         
+  - All success responses now return 204 No Content (no body)               
+  - Error responses return just status codes (400, 401, 404, 413, 429,      
+  500)                                                                      
+  - Outgoing messages no longer include timestamp - client generates it     
+                                                                            
+  New Endpoints:                                                            
+  - GET /my-status?id={userId} - Returns {"s":0|1|2, "p": "peerName"}       
+  - s=0: Not connected (no SSE)                                             
+  - s=1: Waiting in queue                                                   
+  - s=2: Paired (includes p with peer name)                                 
+  - GET /health - Server stats (renamed from /status)                       
+                                                                            
+  Config (env vars):                                                        
+  MESSAGE_RATE_LIMIT_MS=500                                                 
+  STATUS_RATE_LIMIT_MS=3000                                                 
+  MAX_MESSAGE_LEN=1024                                                      
+  MAX_NAME_LEN=18                                                           
+  RECONNECT_GRACE_PERIOD_MS=30000                                           
+  SSE_RETRY_MS=3000                                                         
+                                                                            
+  ✻ Worked for 5m 18s                                                       
+                                                                            
+  dont allow clients to rapid click skip button. (disable it 10 s after the 
+  peer connected) '                                                         
+
+● I'll add a cooldown timer for the skip button that disables it for 10 seconds after connecting.
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 2 lines                                                       
+      20    final isTyping = false.obs;
+      21    final isConnected = false.obs;
+      22    final isPeerTemporarilyDisconnected = false.obs;
+      23 +  final canSkip = false.obs;                                   
+      24  
+      25    final ScrollController scrollController = ScrollController();
+      26    final TextEditingController textController = TextEditingContr
+          oller();
+      27  
+      28    StreamSubscription? _sseSubscription;
+      29    Timer? _typingTimer;
+      30 +  Timer? _skipCooldownTimer;                                   
+      31    String? _myId;
+      32    String? _currentSessionId;
+      33    int? _sessionStartedAt;
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 1 line                                                        
+      43      _saveCurrentSession();
+      44      _sseSubscription?.cancel();
+      45      _typingTimer?.cancel();
+      46 +    _skipCooldownTimer?.cancel();                              
+      47      scrollController.dispose();
+      48      textController.dispose();
+      49      super.onClose();
+
+● Now I need to add a method to start the skip cooldown and call it when connected:
+
+● Read(lib/controllers/chat_controller.dart)
+  ⎿  Read 30 lines
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 1 line                                                        
+      111          status.value = 'Connected to $data';
+      112          isConnected.value = true;
+      113          isPeerTemporarilyDisconnected.value = false;
+      114 +        _startSkipCooldown();                                 
+      115          debugPrint('[SSE] isConnected now: ${isConnected.value
+           }, peerName: ${peerName.value}');
+      116          break;
+      117        case 'reconnected':
+
+● Now add the _startSkipCooldown method. Let me find where to add it:
+
+● Read(lib/controllers/chat_controller.dart)
+  ⎿  Read 30 lines
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 8 lines                                                       
+      194      _sessionStartedAt = DateTime.now().millisecondsSinceEpoch;
+      195    }
+      196  
+      197 +  void _startSkipCooldown() {                                 
+      198 +    canSkip.value = false;                                    
+      199 +    _skipCooldownTimer?.cancel();                             
+      200 +    _skipCooldownTimer = Timer(const Duration(seconds: 10), ()
+          + {                                                            
+      201 +      canSkip.value = true;                                   
+      202 +    });                                                       
+      203 +  }                                                           
+      204 +                                                              
+      205    Future<void> _saveCurrentSession() async {
+      206      if (!StorageService.getSaveChatsEnabled()) return;
+      207      if (_currentSessionId == null || peerName.value == null) r
+           eturn;
+
+● Now update the UI to use canSkip instead of just isConnected:
+
+● Read(lib/pages/chat_page.dart)
+  ⎿  Read 30 lines
+
+● Update(lib/pages/chat_page.dart)
+  ⎿  Added 2 lines, removed 2 lines                                      
+      118              () => IconButton(
+      119                icon: Icon(
+      120                  Icons.skip_next_rounded,
+      121 -                color: controller.isConnected.value           
+      121 +                color: controller.canSkip.value               
+      122                      ? const Color(0xFFF59E0B)
+      123                      : Colors.white30,
+      124                ),
+      125 -              onPressed: controller.isConnected.value         
+      125 +              onPressed: controller.canSkip.value             
+      126                    ? () => controller.skipPeer()
+      127                    : null,
+      128                tooltip: 'Skip',
+
+● Done. The skip button now:
+
+  1. Disabled for10 seconds after connecting to a peer
+  2. Shows as grayed out (white30) when disabled
+  3. Shows orange when enabled after cooldown
+  4. Cooldown resets each time you connect to a new peer
+
+✻ Baked for 1m 30s
+
+❯ And also see you are sending typing status after the message send button  
+  was pressed. (nothing in the input field.) debounce 3 seconds dont send   
+  rapid status events to server. only send typing event if user edited the  
+  text and there is text in the input field in last 3 seconds               
+
+● I'll update the typing status logic to debounce and only send when there's actual text being typed.
+
+● Read(lib/controllers/chat_controller.dart)
+  ⎿  Read 50 lines
+
+● Now I'll add a debounced typing status with proper logic:
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 2 lines                                                       
+      28    StreamSubscription? _sseSubscription;
+      29    Timer? _typingTimer;
+      30    Timer? _skipCooldownTimer;
+      31 +  Timer? _myTypingDebounceTimer;                               
+      32 +  bool _lastSentTypingStatus = false;                          
+      33    String? _myId;
+      34    String? _currentSessionId;
+      35    int? _sessionStartedAt;
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 1 line                                                        
+      46      _sseSubscription?.cancel();
+      47      _typingTimer?.cancel();
+      48      _skipCooldownTimer?.cancel();
+      49 +    _myTypingDebounceTimer?.cancel();                          
+      50      scrollController.dispose();
+      51      textController.dispose();
+      52      super.onClose();
+
+● Now replace the sendTypingStatus method with debounced logic:
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 30 lines, removed 2 lines                                     
+      251    }
+      252  
+      253    void sendTypingStatus(bool typing) {
+      254 -    if (_myId == null) return;                                
+      255 -    _apiService.sendTypingStatus(userData.id, typing ? 1 : 0);
+      254 +    if (_myId == null || !isConnected.value) return;          
+      255 +                                                              
+      256 +    // Cancel any pending debounce timer                      
+      257 +    _myTypingDebounceTimer?.cancel();                         
+      258 +                                                              
+      259 +    if (typing) {                                             
+      260 +      // Only send typing=true if we haven't already sent it  
+      261 +      if (!_lastSentTypingStatus) {                           
+      262 +        _lastSentTypingStatus = true;                         
+      263 +        _apiService.sendTypingStatus(userData.id, 1);         
+      264 +      }                                                       
+      265 +      // Set timer to send typing=false after 3 seconds of no 
+          +activity                                                      
+      266 +      _myTypingDebounceTimer = Timer(const Duration(seconds: 3
+          +), () {                                                       
+      267 +        if (_lastSentTypingStatus) {                          
+      268 +          _lastSentTypingStatus = false;                      
+      269 +          _apiService.sendTypingStatus(userData.id, 0);       
+      270 +        }                                                     
+      271 +      });                                                     
+      272 +    } else {                                                  
+      273 +      // Text field is empty, send typing=false immediately if
+          + we were typing                                               
+      274 +      if (_lastSentTypingStatus) {                            
+      275 +        _lastSentTypingStatus = false;                        
+      276 +        _apiService.sendTypingStatus(userData.id, 0);         
+      277 +      }                                                       
+      278 +    }                                                         
+      279    }
+      280  
+      281 +  void _resetTypingStatus() {                                 
+      282 +    _myTypingDebounceTimer?.cancel();                         
+      283 +    _lastSentTypingStatus = false;                            
+      284 +  }                                                           
+      285 +                                                              
+      286    Future<void> skipPeer() async {
+      287      if (userData.id.isEmpty) return;
+      288      try {
+
+● Now reset typing status when sending a message and when skipping:
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 1 line                                                        
+      238      if (textController.text.trim().isEmpty) return;
+      239      final text = textController.text.trim();
+      240      textController.clear();
+      241 +    _resetTypingStatus();                                     
+      242  
+      243      final ts = DateTime.now().millisecondsSinceEpoch;
+      244      messages.add(ChatMessage(text: text, from: 'Me', ts: ts, i
+           sMe: true));
+
+● Update(lib/controllers/chat_controller.dart)
+  ⎿  Added 2 lines                                                       
+      288      if (userData.id.isEmpty) return;
+      289      try {
+      290        _saveCurrentSession();
+      291 +      _resetTypingStatus();                                   
+      292        messages.clear();
+      293        peerName.value = null;
+      294        isConnected.value = false;
+      295        isTyping.value = false;
+      296 +      canSkip.value = false;                                  
+      297        status.value = 'Looking for a new stranger...';
+      298        _currentSessionId = null;
+      299        await _apiService.disconnect(userData.id);
+
+● Done. The typing status now:
+
+  1. Sends typing=1 only once when user starts typing (not on every keystroke)
+  2. Debounces for 3 seconds - if user stops typing for 3 seconds, sends typing=0
+  3. Sends typing=0 immediately when text field becomes empty
+  4. Resets state when message is sent or when skipping peer
+  5. Won't send if not connected
+
+✻ Cooked for 6m 36s
+
+❯ /cost 
+  ⎿  Total cost:            $13.72
+     Total duration (API):  40m 46s
+     Total duration (wall): 5h 13m 56s
+     Total code changes:    2294 lines added, 698 lines removed
+     Usage by model:
+            claude-sonnet:  24.6k input, 25.7k output, 0 cache read, 0 cache 
+     write ($0.4599)
+          claude-opus-4-5:  1.6m input, 62.2k output, 7.8m cache read, 0 cache 
+     write ($13.26)
+
+
+
